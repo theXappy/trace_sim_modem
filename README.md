@@ -22,7 +22,7 @@ Most modems use a standard ISO 7816 interface, which includes several pins, but 
 - **GND** – Common ground (required for signal reference)
 
 Here's a diagram:  
-![image](https://github.com/user-attachments/assets/71cb3c30-c4e9-4b23-8764-5f2ccddc96a7)
+<img src="https://github.com/user-attachments/assets/71cb3c30-c4e9-4b23-8764-5f2ccddc96a7" width="400"/>  
 
 Luckily, both are easy to spot:  
 * GND is the non-recntangular one which is connected to the middle area between the ther pads.  
@@ -46,15 +46,18 @@ With both Analzyer and the modem disconnected from a power source, connect both 
 Then connect the modem's I/O pin to the analyzer's first channel. On my device it was CH1.
 
 Once you’ve made these connections, you're almost ready to capture data with your logic analyzer.  
-<img src="https://github.com/user-attachments/assets/cebf4528-7784-46b8-ab3d-b7015351cde2" width="300"/>  
+<img src="https://github.com/user-attachments/assets/0735ef4f-adf1-4dcf-8f73-54ff9c49a022" height="300"/>
+<img src="https://github.com/user-attachments/assets/cebf4528-7784-46b8-ab3d-b7015351cde2" height="300"/>  
+
 
 ## 3. Using `pysim-shell` as a Reference Tool
 
-Before sniffing the raw SIM interface, it's helpful to generate known, predictable traffic. [`pysim-shell`](https://github.com/osmocom/pysim) is a CLI tool that allows you to send high-level commands to a SIM card — either through a smart card reader or via a modem that supports [AT commands](https://en.wikipedia.org/wiki/Hayes_AT_command_set).
+Before sniffing the raw SIM interface, it's helpful to generate known, predictable traffic. [`pysim-shell`](https://github.com/osmocom/pysim) is a CLI tool that allows you to invoke high-level commands to a SIM card — either through a smart card reader or via a modem that supports [AT commands](https://en.wikipedia.org/wiki/Hayes_AT_command_set).
 
-The second option is especially useful: by controlling the modem directly, we can create traffic at predictable times and know exactly what byte patterns to expect.
+The second option is especially useful for us: by controlling the modem, we can create traffic at predictable times and know exactly what byte patterns to expect.
 
-Many USB modems (including those commonly found on AliExpress) expose themselves as one or more USB serial devices.  
+Many USB modems (including those commonly found on AliExpress) expose a one or more USB serial devices.  
+![{4E5E6DF5-A06E-4833-952A-60B47A7F1F90}](https://github.com/user-attachments/assets/668e3501-f854-4ae4-a0ba-8a5f93b4e28c)  
 One of them is usually an AT commands interface.  
 To find the correct one:  
 - Connect to each exposed serial port using PuTTY (or similar).
@@ -80,32 +83,17 @@ Use this command to get there:
 ```
 pySIM-shell (00:MF)> select DF.GSM/EF.IMSI
 ```
-Expected output:
-```
-{
-    "file_descriptor": {
-        "file_descriptor_byte": {
-            "file_type": "working_ef",
-            "structure": "transparent"
-        }
-    },
-    "proprietary_info": {},
-    "file_id": "6f07",
-    "file_size": 9,
-    "access_conditions": "1500",
-    "life_cycle_status_int": "terminated"
-}
-```
+When the command succeeds, you get this output (This is NOT the content of the file):  
+<img src="https://github.com/user-attachments/assets/f39b565a-fc8a-409b-b6ea-763067bedc6a" height="200"/>  
 
-
-`read_binary` is used to get the content of the selected "file". Here it is with expected output (I censored my card's IMSI):  
+Next use `read_binary` to get the content of the selected "file". Expected output (I censored my card's IMSI):  
 ```
 pySIM-shell (00:MF/DF.GSM/EF.IMSI)> read_binary
 08X9XXXXXXXXXXXXXX
 ```
-This will be the pattern we'd look for in raw traffic 
-I suggest using the EF.IMSI since it's not too short (less false positives) and *commonly* contains a distinguishable pattern (not many repetations/zeroes).  
-Having said that, it'll also work for any other large enough "file". 
+This will be the pattern we'd look for in raw traffic.  
+I suggest using the EF.IMSI since its content is distinguishable (not many repetations/zeroes, not too short).  
+Having said that, our strategy should work for other large enough "files". 
 
 ## 4. Capturing with PulseView
 
@@ -174,14 +162,60 @@ Read the next section to see how the reference for pysim is used to confirm the 
 ### 5.2 Confirming the Baud Rate with pysim as Reference
 
 After setting a UART decoder in PulseView and baud rate of 62.5K, I zoomed in to the 2nd burst.  
-I assumed the 1st would be the Modem's request for EF.IMSI's content (relayed my PC's request) and the 2nd would be the content itself.
+I assumed the 1st would be the Modem's request for EF.IMSI's content (relaying my PC's request) and the 2nd would be the content itself.
 Side by side, it's easy to find the EF.IMSI content seen in pysim-shell within the data (censored again, but I marked matching bytes with the same colors):  
 ![image](https://github.com/user-attachments/assets/aabca203-a34d-437b-887d-2081a515b8e1)
 
 Not sure about the 0xB0 byte before but I do know that SIM card operations end with 2-byte result code.  
-This one shows `90 00` which is common for "success".  
-This is the final nail in the coffin and now I know I have the right settings.
-If you really want to finalizing this thing, bruteforce the "parity bit".  
-Maybe was "odd", but even when set to "none"/"even" the data bytes came out fine so it's not too important.  
+This one shows `90 00` which means "Normal ending" (success).  
+For me that's is the final nail in the coffin and now I know I have the right settings.  
+If want to go the extra mile, you can bruteforce the "parity bit".  
+Mine was "odd", but when set to "none"/"even" the data bytes still came out fine so it doesn't affect decoding.  
 
+## 6. From PulseView to Wireshark
 
+Once you’ve captured and decoded the UART traffic using PulseView, the next step is to export it and convert it into a format that Wireshark can understand.
+
+### Exporting with `sigrok-cli`
+
+You can use the following command to extract a clean stream of UART bytes from your `.sr` capture file:
+
+```bash
+sigrok-cli -i input.sr -P uart:rx=D0:baudrate=62500 -B uart=rx > output_uart.bin
+```
+Adjust `D0` according to the channel you've seen in PulseView. 
+
+Note: The `-B uart=rx` part is important — without it, `sigrok-cli` will output both RX and TX streams.
+Since both are connected to the same logic analyzer pin, you’ll end up with duplicated data unless you filter for just rx.
+
+The output will be a raw binary stream (output.bin) of decoded UART bytes — this represents the APDUs exchanged over the SIM interface.
+
+---
+### Converting to PCAP for Wireshark
+To view these APDUs in Wireshark, we need to wrap them in a proper pcap file and cause the `gsm_sim` dissector (parser) to be called.  
+We'll achieve that using a special link-layer type called Wireshark Upper PDU (type 252), it's a meta-dissector that allows passing payload to arbitrary dissectors.
+
+You can use the provided Python script in this repo: `
+```
+uart_bin_to_gsmsim_pcap.py -i output_uart.bin -o output_gsm_sim.pcap
+```
+
+This script:
+* Wraps each APDU packet with the required "Upper PDU" header
+* Uses shallow parsing to find APDU packet boundaries (based on length byte at offset 0x04)
+* Writes the result as a .pcap that Wireshark can open and dissect
+
+After running the script, open the resulting .pcap in Wireshark and you'd see something like this:
+![image](https://github.com/user-attachments/assets/04e9e01a-84e1-4599-890d-758d68cbc368)
+
+Now you can trace back what the modem and SIM exchanged — down to each command and response — using a full-featured network protocol analyzer.
+Note that our little exchange with `pysim` ended up as 3 "commands":  
+`select` -> `get response` (used because the `select` response were too large, I think) -> `read binary`
+
+---
+
+## 7. Wrap-Up
+
+Sniffing SIM APDUs may seem obscure, but with the right tools and a bit of protocol knowledge, it’s surprisingly accessible.  
+By tapping the SIM I/O line, capturing with PulseView, decoding as UART, and converting the output for Wireshark, you gain full visibility into the low-level dialog between a modem and a SIM card.  
+Good Luck :)
