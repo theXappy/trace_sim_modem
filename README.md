@@ -214,7 +214,7 @@ Note that our little exchange with `pysim` ended up as 3 "commands":
 
 ---
 
-## 7. Wrap-Up
+## Wrap Up
 
 Sniffing SIM APDUs may seem obscure, but with the right tools and a bit of protocol knowledge, it’s surprisingly accessible.  
 By tapping the SIM I/O line, capturing with PulseView, decoding as UART, and converting the output for Wireshark, you gain full visibility into the low-level dialog between a modem and a SIM card.  
