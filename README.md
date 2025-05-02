@@ -140,11 +140,11 @@ While working on this research I encountered this [blog post by Jason Gin](https
 Jason was sniffing the I/O connection between his router's modem and his sim card to figure out which PIN did the router set on the card.  
 Sounds overlapping with my effort. He too had to figure out the baud rate of the interface and suggested the formal way: ATR.
 
-After a SIM reset, the card sends an **[ATR (Answer To Reset)](https://en.wikipedia.org/wiki/Answer_to_reset#:~:text=An%20Answer%20To%20Reset%20(ATR,the%20card's%20nature%20and%20state.)** — a sequence of bytes that defines the supported protocols, voltages, and timings. You’ll almost always see this in the first burst after powering up the SIM.
+After a SIM reset, the card sends an **[ATR (Answer To Reset)](https://en.wikipedia.org/wiki/Answer_to_reset)** — a sequence of bytes that defines the supported protocols, voltages, and timings. You’ll almost always see this in the first burst after powering up the SIM.
 
 To get the ATR, I had to use different tools and software:
 I was able to capture the ATR using a smartcard reader Wireshark + [USBPcap](https://desowin.org/usbpcap/).  
-I then decoded the **ATR using this tool** that Jason suggested.  
+I then decoded the **[ATR using this tool](https://smartcard-atr.apdu.fr/parse?ATR=3b1694d0017abd0d00)** that Jason suggested.  
 It seemed very promising, even calculating for me the possible baud rate values:
 ```
 Fi=512, Di=8, 64 cycles/ETU (62500 bits/s at 4.00 MHz, 78125 bits/s for fMax=5 MHz)
