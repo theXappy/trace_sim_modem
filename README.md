@@ -151,6 +151,14 @@ What to do if you don't have a smartcard reader? You'd need to bruteforce this t
 Luckily the PulseView decoder is pretty responsive so just play around with the values until bytes start lining up.  
 Read the next section to see how the reference for pysim is used to confirm the baud rate and use it as you "validation" check for each value you try.
 
+Edit (16/5/25): After using a 2nd smartcard reader I realized that the ATR may change depending on the reader modem.  
+This is crucial as the 2nd reader I tried gave completely different baud rates for the same SIM card: 
+```
+Fi=372, Di=1, 372 cycles/ETU (10752 bits/s at 4.00 MHz, 13440 bits/s for fMax=5 MHz)
+```
+My guess is the the 1st SC reader was, by chance, doing a similar handshake as the modem I was sniffing, so the baudrate matched.  
+Bottom line: Take the values with a grain of salt. It's worth tried them (for 4Mhz/5Mhz) but it both don't work, resort to bruteforcing.
+
 ---
 
 ### 5.2 Confirming the Baud Rate with pysim as Reference
