@@ -3,15 +3,9 @@
 When a modem communicates with a SIM card, the two exchange APDUs (Application Protocol Data Units) over a serial interface based on ISO 7816.  
 These APDUs include commands like reading files, authenticating with the network, and selecting applications on the SIM.
 
-Sniffing this communication can be useful for debugging, reverse engineering, or simply understanding what a modem is doing under the hood. However, capturing this data isn't as straightforward as tapping into a normal UART, because:
-- The communication happens at a relatively high baud rate (often auto-negotiated).
-- The protocol starts with a cold reset and an Answer To Reset (ATR), which isn't an APDU but still part of the handshake.
-- There's no standard connector for monitoring this traffic — you need to physically tap into the electrical lines between the modem and SIM.
-- The interface is **half-duplex**, with both the modem and the SIM sharing the same I/O line. Unlike typical UART setups (e.g., PC ↔ device), we're capturing both directions of traffic on the same wire, and must distinguish between them passively.
+My goal in this guide is to sniff these APDUs in transit, decode them, and view them in a structured way (e.g., in Wireshark) for further analysis.
 
-MY goal in this guide is to sniff these APDUs in transit, decode them, and view them in a structured way (e.g., in Wireshark) for further analysis.
-
-We'll walk through a complete workflow: from physically accessing the SIM communication lines, to capturing and decoding the data stream, all the way to viewing it in a user-friendly format.
+We'll walk through a complete workflow: from physically accessing the SIM communication lines, to capturing and decoding the data stream, all the way to viewing it in Wireshark.
 
 ## 2. Hardware Setup: Tapping the SIM Lines
 
