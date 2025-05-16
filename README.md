@@ -46,7 +46,7 @@ Once you’ve made these connections, you're almost ready to capture data with y
 
 ## 3. Using `pysim-shell` as a Reference Tool
 
-Before sniffing the raw SIM interface, it's helpful to generate known, predictable traffic. [`pysim-shell`](https://github.com/osmocom/pysim) is a CLI tool that allows you to invoke high-level commands to a SIM card — either through a smart card reader or via a modem that supports [AT commands](https://en.wikipedia.org/wiki/Hayes_AT_command_set).
+Before sniffing the raw SIM interface, it's helpful to generate known, predictable traffic. [`pysim-shell`](https://github.com/osmocom/pysim) is a CLI tool that allows you to invoke high-level commands to a SIM card - either through a smart card reader or via a modem that supports [AT commands](https://en.wikipedia.org/wiki/Hayes_AT_command_set).
 
 The second option is especially useful for us: by controlling the modem, we can create traffic at predictable times and know exactly what byte patterns to expect.
 
@@ -93,7 +93,7 @@ Having said that, our strategy should work for other large enough "files".
 
 With the SIM I/O line tapped and the logic analyzer connected, we can now capture the actual communication using [PulseView](https://sigrok.org/wiki/PulseView), the GUI frontend for the sigrok suite.
 
-PulseView lets you visualize digital signals and apply protocol decoders — in our case, we’ll be using the UART decoder to make sense of the raw I/O line.
+PulseView lets you visualize digital signals and apply protocol decoders - in our case, we’ll be using the UART decoder to make sense of the raw I/O line.
 
 To setup your analyzer & PulseView for the first time follow [this YouTube tutorial](https://www.youtube.com/watch?v=3IA_6MwInVg).
 
@@ -101,29 +101,29 @@ To setup your analyzer & PulseView for the first time follow [this YouTube tutor
 
 0. Make sure both Analzyer and Modem are connected before capturing. We *don't* want to capture the device start-up this time.  
 1. **Launch PulseView** and select your logic analyzer device.
-2. Set the sample rate — Usually we aim for **at least 4x the expected baud rate**. Since I didn't know the right one, I used the highest available (25 MHz).
+2. Set the sample rate - Usually we aim for **at least 4x the expected baud rate**. Since I didn't know the right one, I used the highest available (25 MHz).
 3. Set the sampling length - I used 500 M, which was more than enough to trigger the EF.IMSI read several times.
 4. Start capturing.
 5. Using pysim-shell, send the `read_binary` command.
 
-Once captured, the waveform will include bursts of serial data — but there’s a catch: **we don’t know the exact baud rate yet.**  
+Once captured, the waveform will include bursts of serial data - but there’s a catch: **we don’t know the exact baud rate yet.**  
 It should look something like this:
 ![image](https://github.com/user-attachments/assets/16dc45f3-4652-4365-a770-2bb61e2efc70)
 
 ## 5. Analyzing as UART
 
 While this SIM interface looks like UART at a glance, it's **not officially defined as "just UART"**.  
-It's based on the ISO 7816 standard — specifically, ISO 7816-3 for the electrical interface and ISO 7816-4 for the APDU-level protocol.
+It's based on the ISO 7816 standard - specifically, ISO 7816-3 for the electrical interface and ISO 7816-4 for the APDU-level protocol.
 
-In ISO 7816-3, the electrical signaling is asynchronous, byte-oriented, and half-duplex — all characteristics that **make it possible to decode using a UART decoder**.
+In ISO 7816-3, the electrical signaling is asynchronous, byte-oriented, and half-duplex - all characteristics that **make it possible to decode using a UART decoder**.
 
-For our purposes — sniffing and interpreting APDUs exchanged between the modem and SIM — **PulseView's UART decoder works well enough**, because:
+For our purposes - sniffing and interpreting APDUs exchanged between the modem and SIM - **PulseView's UART decoder works well enough**, because:
 - The electrical signal is compatible (1 start bit, 8 data bits, 1 stop bit)
 - The data exchanged is byte-aligned
 - We're not trying to *drive* the interface, only to **passively read** the traffic
 
 Once you have a raw capture, the next step is to decode the UART protocol on top of the I/O line.  
-But before you can decode anything, you need to know the correct UART settings — especially the **baud rate**.
+But before you can decode anything, you need to know the correct UART settings - especially the **baud rate**.
 Using the wrong rate gives us undecodable garbage.
 
 ---
@@ -134,7 +134,7 @@ While working on this research I encountered this [blog post by Jason Gin](https
 Jason was sniffing the I/O connection between his router's modem and his sim card to figure out which PIN did the router set on the card.  
 Sounds overlapping with my effort. He too had to figure out the baud rate of the interface and suggested the formal way: ATR.
 
-After a SIM reset, the card sends an **[ATR (Answer To Reset)](https://en.wikipedia.org/wiki/Answer_to_reset)** — a sequence of bytes that defines the supported protocols, voltages, and timings. You’ll almost always see this in the first burst after powering up the SIM.
+After a SIM reset, the card sends an **[ATR (Answer To Reset)](https://en.wikipedia.org/wiki/Answer_to_reset)** - a sequence of bytes that defines the supported protocols, voltages, and timings. You’ll almost always see this in the first burst after powering up the SIM.
 
 To get the ATR, I had to use different tools and software:
 I was able to capture the ATR using a smartcard reader Wireshark + [USBPcap](https://desowin.org/usbpcap/).  
@@ -179,10 +179,10 @@ sigrok-cli -i input.sr -P uart:rx=D0:baudrate=62500 -B uart=rx > output_uart.bin
 ```
 Adjust `D0` according to the channel you've seen in PulseView. 
 
-Note: The `-B uart=rx` part is important — without it, `sigrok-cli` will output both RX and TX streams.
+Note: The `-B uart=rx` part is important - without it, `sigrok-cli` will output both RX and TX streams.
 Since both are connected to the same logic analyzer pin, you’ll end up with duplicated data unless you filter for just rx.
 
-The output will be a raw binary stream (output.bin) of decoded UART bytes — this represents the APDUs exchanged over the SIM interface.
+The output will be a raw binary stream (output.bin) of decoded UART bytes - this represents the APDUs exchanged over the SIM interface.
 
 ---
 ### Converting to PCAP for Wireshark
@@ -202,7 +202,7 @@ This script:
 After running the script, open the resulting .pcap in Wireshark and you'd see something like this:
 ![image](https://github.com/user-attachments/assets/04e9e01a-84e1-4599-890d-758d68cbc368)
 
-Now you can trace back what the modem and SIM exchanged — down to each command and response — using a full-featured network protocol analyzer.
+Now you can trace back what the modem and SIM exchanged - down to each command and response - using a full-featured network protocol analyzer.
 Note that our little exchange with `pysim` ended up as 3 "commands":  
 `select` -> `get response` (used because the `select` response were too large, I think) -> `read binary`
 
